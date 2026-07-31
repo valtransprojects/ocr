@@ -1,0 +1,15 @@
+.env
+.git/
+vendor/
+node_modules/
+/storage/framework/cache/data/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/logs/*
+.DS_Store
+.editorconfig
+.gitattributes
+.gitignore
+.styleci.yml
+.deploy_config
+

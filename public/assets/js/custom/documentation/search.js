@@ -1,0 +1,33 @@
+/*
+ * ATTENTION: The "eval" devtool has been used (maybe by default in mode: "development").
+ * This devtool is neither made for production nor for readable output files.
+ * It uses "eval()" calls to create a separate source file in the browser devtools.
+ * If you are trying to read the output file, select a different devtool (https://webpack.js.org/configuration/devtool/)
+ * or disable the default devtool with "devtool: false".
+ * If you are looking for production-ready output files, see mode: "production" (https://webpack.js.org/configuration/mode/).
+ */
+/******/ (() => { // webpackBootstrap
+/******/ 	"use strict";
+/******/ 	var __webpack_modules__ = ({
+
+/***/ "../src/js/custom/documentation/search.js"
+/*!************************************************!*\
+  !*** ../src/js/custom/documentation/search.js ***!
+  \************************************************/
+() {
+
+eval("{\n\n// Class definition\nvar KTDocsSearch = function() {\n    // Private variables\n    var element;\n    var formElement;\n    var mainElement;\n    var resultsElement;\n    var wrapperElement;\n    var emptyElement;    \n    var searchObject;\n\n    // Private functions\n    var processs = function(search) {\n        var results = 0;\n\n        // Elements\n        var searchable = [].slice.call(resultsElement.querySelectorAll('[data-kt-searchable=\"true\"]'));\n\n        // Match elements\n        searchable.map(function (element) {  \n            var query = searchObject.getQuery();\n\n            if (element.innerText.toLowerCase().indexOf(query.toLowerCase()) !== -1) {\n                element.classList.remove('d-none');\n                results++;\n            } else {\n                element.classList.add('d-none');\n            }\n        });\n        \n        // Hide recently viewed\n        mainElement.classList.add('d-none');\n\n        if (results === 0) {\n            // Hide results\n            resultsElement.classList.add('d-none');\n            // Show empty message \n            emptyElement.classList.remove('d-none');\n        } else {\n            // Show results\n            resultsElement.classList.remove('d-none');\n            // Hide empty message \n            emptyElement.classList.add('d-none');\n        }                  \n\n        // Complete search\n        search.complete();\n    }\n\n    var clear = function(search) {\n        // Show recently viewed\n        mainElement.classList.remove('d-none');\n        // Hide results\n        resultsElement.classList.add('d-none');\n        // Hide empty message \n        emptyElement.classList.add('d-none');\n    }    \n\n    // Public methods\n\treturn {\n\t\tinit: function() {\n            // Elements\n            element = document.querySelector('#kt_docs_search');\n\n            if (!element) {\n                return;\n            }\n\n            wrapperElement = element.querySelector('[data-kt-search-element=\"wrapper\"]');\n            formElement = element.querySelector('[data-kt-search-element=\"form\"]');\n            mainElement = element.querySelector('[data-kt-search-element=\"main\"]');\n            resultsElement = element.querySelector('[data-kt-search-element=\"results\"]');\n            emptyElement = element.querySelector('[data-kt-search-element=\"empty\"]');\n            \n            // Initialize search handler\n            searchObject = new KTSearch(element);\n\n            // Search handler\n            searchObject.on('kt.search.process', processs);\n\n            // Clear handler\n            searchObject.on('kt.search.clear', clear);     \n\t\t}\n\t};\n}();\n\n// On document ready\nKTUtil.onDOMContentLoaded(function() {\n    KTDocsSearch.init();\n});\n\n//# sourceURL=webpack://keenthemes/../src/js/custom/documentation/search.js?\n}");
+
+/***/ }
+
+/******/ 	});
+/************************************************************************/
+/******/ 	
+/******/ 	// startup
+/******/ 	// Load entry module and return exports
+/******/ 	// This entry module can't be inlined because the eval devtool is used.
+/******/ 	var __webpack_exports__ = {};
+/******/ 	__webpack_modules__["../src/js/custom/documentation/search.js"]();
+/******/ 	
+/******/ })()
+;
