@@ -374,9 +374,7 @@
     </div>
 
     <div class="d-flex align-items-center flex-wrap gap-4">
-        <a href="{{ route('ocr.batch.uploader') }}" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-2">
-            <i class="ki-outline ki-lock fs-5"></i> Open Batch Uploader
-        </a>
+
 
         <div class="ocr-stats">
             <div class="ocr-stat">
