@@ -21,6 +21,9 @@ Route::post('/ocr/process', [OcrController::class, 'process'])->name('ocr.proces
 
 // Batch / Back-to-Back Upload & Database Persistence Routes
 Route::get('/ocr/batch', [OcrController::class, 'batchIndex'])->name('ocr.batch');
+Route::get('/ocr/batch/uploader', [OcrController::class, 'uploaderIndex'])->name('ocr.batch.uploader');
+Route::post('/ocr/batch/uploader/auth', [OcrController::class, 'uploaderAuth'])->name('ocr.batch.uploader.auth');
+Route::match(['get', 'post'], '/ocr/batch/uploader/lock', [OcrController::class, 'uploaderLock'])->name('ocr.batch.uploader.lock');
 Route::post('/ocr/batch/process', [OcrController::class, 'batchProcess'])->name('ocr.batch.process');
 Route::get('/ocr/batch/records', [OcrController::class, 'batchRecords'])->name('ocr.batch.records');
 Route::post('/ocr/batch/record/{id}/accept-logic', [OcrController::class, 'acceptLogic'])->name('ocr.batch.acceptLogic');

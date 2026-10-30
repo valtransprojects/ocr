@@ -367,448 +367,74 @@
 
 @section('content')
 <!--begin::Header-->
-<div class="d-flex flex-column flex-xl-row align-items-xl-end justify-content-between gap-6 mb-8">
+<div class="d-flex flex-column flex-xl-row align-items-xl-center justify-content-between gap-6 mb-8">
     <div>
-        <h1 class="text-gray-900 fw-bold fs-2 mb-1">Batch OCR Upload</h1>
-        <div class="text-gray-500 fs-7">Upload plate images, compare engines and confirm the best logic.</div>
+        <h1 class="text-gray-900 fw-bold fs-2 mb-1">OCR ANPR Database &amp; Comparison Log</h1>
+        <div class="text-gray-500 fs-7">Review engine comparison records, inspect characters, and confirm logic decisions.</div>
     </div>
 
-    <div class="ocr-stats">
-        <div class="ocr-stat">
-            <div class="ocr-stat-label">Session queue</div>
-            <div class="ocr-stat-value" id="stat-session-count">0 Files</div>
-        </div>
-        <div class="ocr-stat">
-            <div class="ocr-stat-label">Processed</div>
-            <div class="ocr-stat-value" id="stat-processed-count">0 / 0</div>
-        </div>
-        <div class="ocr-stat">
-            <div class="ocr-stat-label">DB records</div>
-            <div class="ocr-stat-value" id="stat-db-total">{{ $stats['total'] ?? '--' }}</div>
-        </div>
-        <div class="ocr-stat" title="Records where Current Logic was accepted">
-            <div class="ocr-stat-label">Current logic</div>
-            <div class="ocr-stat-value">
-                <span id="stat-current-logic-count">{{ $stats['current_logic_count'] ?? 0 }}</span>
-                <span class="fs-7 fw-semibold text-primary ms-1" id="stat-current-logic-pct">{{ $stats['current_logic_pct'] ?? 0 }}%</span>
+    <div class="d-flex align-items-center flex-wrap gap-4">
+        <a href="{{ route('ocr.batch.uploader') }}" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-2">
+            <i class="ki-outline ki-lock fs-5"></i> Open Batch Uploader
+        </a>
+
+        <div class="ocr-stats">
+            <div class="ocr-stat">
+                <div class="ocr-stat-label">DB records</div>
+                <div class="ocr-stat-value" id="stat-db-total">{{ $stats['total'] ?? '--' }}</div>
             </div>
-            <div class="ocr-stat-sub" id="stat-current-logic-sub">{{ $stats['current_logic_count'] ?? 0 }} of {{ $stats['decided_picks'] ?? 0 }} picks</div>
-        </div>
-        <div class="ocr-stat" title="Records where New Logic was accepted">
-            <div class="ocr-stat-label">New Logic</div>
-            <div class="ocr-stat-value">
-                <span id="stat-best-pick-count">{{ $stats['best_pick_count'] ?? 0 }}</span>
-                <span class="fs-7 fw-semibold text-warning ms-1" id="stat-best-pick-pct">{{ $stats['best_pick_pct'] ?? 0 }}%</span>
+            <div class="ocr-stat" title="Records where Current Logic was accepted">
+                <div class="ocr-stat-label">Current logic</div>
+                <div class="ocr-stat-value">
+                    <span id="stat-current-logic-count">{{ $stats['current_logic_count'] ?? 0 }}</span>
+                    <span class="fs-7 fw-semibold text-primary ms-1" id="stat-current-logic-pct">{{ $stats['current_logic_pct'] ?? 0 }}%</span>
+                </div>
+                <div class="ocr-stat-sub" id="stat-current-logic-sub">{{ $stats['current_logic_count'] ?? 0 }} of {{ $stats['decided_picks'] ?? 0 }} picks</div>
             </div>
-            <div class="ocr-stat-sub" id="stat-best-pick-sub">{{ $stats['best_pick_count'] ?? 0 }} of {{ $stats['decided_picks'] ?? 0 }} picks</div>
+            <div class="ocr-stat" title="Records where New Logic was accepted">
+                <div class="ocr-stat-label">New Logic</div>
+                <div class="ocr-stat-value">
+                    <span id="stat-best-pick-count">{{ $stats['best_pick_count'] ?? 0 }}</span>
+                    <span class="fs-7 fw-semibold text-warning ms-1" id="stat-best-pick-pct">{{ $stats['best_pick_pct'] ?? 0 }}%</span>
+                </div>
+                <div class="ocr-stat-sub" id="stat-best-pick-sub">{{ $stats['best_pick_count'] ?? 0 }} of {{ $stats['decided_picks'] ?? 0 }} picks</div>
+            </div>
+            <div class="ocr-stat" title="Records where Both Current and New Logic were acceptable">
+                <div class="ocr-stat-label">Both acceptable</div>
+                <div class="ocr-stat-value">
+                    <span id="stat-both-acceptable-count">{{ $stats['both_acceptable_count'] ?? 0 }}</span>
+                    <span class="fs-7 fw-semibold text-info ms-1" id="stat-both-acceptable-pct">{{ $stats['both_acceptable_pct'] ?? 0 }}%</span>
+                </div>
+                <div class="ocr-stat-sub" id="stat-both-acceptable-sub">{{ $stats['both_acceptable_count'] ?? 0 }} of {{ $stats['decided_picks'] ?? 0 }} picks</div>
+            </div>
         </div>
     </div>
 </div>
 <!--end::Header-->
 
-<!--begin::Uploader-->
-<div class="row g-5 mb-8">
-    <div class="col-12" id="batch-control-column">
-        <div class="card card-flush">
-            <div class="card-header pt-6">
-                <div class="card-title">
-                    <h3 class="fw-bold text-gray-900 fs-5 mb-0">Upload &amp; Queue</h3>
-                </div>
-                <div class="card-toolbar">
-                    <div class="form-check form-switch form-check-custom form-check-solid">
-                        <input class="form-check-input h-20px w-35px" type="checkbox" id="auto-process-toggle" checked />
-                        <label class="form-check-label fs-7 fw-semibold text-gray-600 ms-2" for="auto-process-toggle">Auto-run</label>
-                    </div>
-                </div>
+<!--begin::Uploader Link Banner-->
+<div class="card card-flush mb-8 border border-dashed border-primary" style="background: rgba(var(--bs-primary-rgb), 0.04);">
+    <div class="card-body py-4 px-6 d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-4">
+        <div class="d-flex align-items-center gap-4">
+            <div class="symbol symbol-45px symbol-circle bg-light-primary d-flex align-items-center justify-content-center">
+                <i class="ki-outline ki-cloud-upload fs-2 text-primary"></i>
             </div>
-
-            <div class="card-body pt-2">
-                <div class="row g-8">
-                    <!--Left: engine + dropzone-->
-                    <div class="col-lg-5 d-flex flex-column">
-                        <div class="ocr-label mb-2">Engine</div>
-                        <div class="btn-group w-100 mb-5" role="group" aria-label="Engine selector">
-                            <input type="radio" class="btn-check" name="batch_engine" id="engine-all" value="all" checked>
-                            <label class="btn btn-sm btn-light btn-color-gray-700 btn-active-light-primary" for="engine-all">All</label>
-
-                            <input type="radio" class="btn-check" name="batch_engine" id="engine-candid" value="candid">
-                            <label class="btn btn-sm btn-light btn-color-gray-700 btn-active-light-primary" for="engine-candid">Candid</label>
-
-                            <input type="radio" class="btn-check" name="batch_engine" id="engine-eydea" value="eydea">
-                            <label class="btn btn-sm btn-light btn-color-gray-700 btn-active-light-primary" for="engine-eydea">Eydea</label>
-
-                            <input type="radio" class="btn-check" name="batch_engine" id="engine-parkonic" value="parkonic">
-                            <label class="btn btn-sm btn-light btn-color-gray-700 btn-active-light-primary" for="engine-parkonic">ARH</label>
-
-                            <input type="radio" class="btn-check" name="batch_engine" id="engine-anpr2" value="anpr2">
-                            <label class="btn btn-sm btn-light btn-color-gray-700 btn-active-light-primary" for="engine-anpr2">Parkonic</label>
-                        </div>
-
-                        <div class="ocr-dropzone flex-grow-1 d-flex flex-column align-items-center justify-content-center" id="batch-upload-zone" style="min-height: 170px;">
-                            <input type="file" id="batch-file-input" class="d-none" accept="image/*" multiple>
-                            <div class="text-gray-900 fw-semibold fs-6 mb-1">Drop images here</div>
-                            <div class="text-gray-500 fs-7 mb-4">or click to browse — you can add more while the queue runs</div>
-                            <span class="btn btn-sm btn-light-primary pe-none">Select images</span>
-                        </div>
-                    </div>
-
-                    <!--Right: queue-->
-                    <div class="col-lg-7 d-flex flex-column">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="ocr-label">Queue</span>
-                                <span class="badge badge-light fs-8 fw-semibold" id="queue-counter-badge">0 / 0</span>
-                            </div>
-                            <div class="d-flex gap-2">
-                                <button class="btn btn-sm btn-primary" id="start-queue-btn" disabled>
-                                    <span id="start-queue-btn-text">Start queue</span>
-                                </button>
-                                <button class="btn btn-sm btn-light" id="clear-queue-btn" disabled>Clear</button>
-                            </div>
-                        </div>
-
-                        <div class="progress h-4px bg-light mb-4">
-                            <div class="progress-bar bg-primary" role="progressbar" style="width: 0%; transition: width .3s ease;" id="queue-progress-bar"></div>
-                        </div>
-
-                        <div class="queue-list-container d-flex flex-column gap-2 flex-grow-1" id="queue-list">
-                            <div class="text-center py-10 border border-dashed border-gray-300 rounded my-auto" id="queue-empty-state">
-                                <div class="fw-semibold text-gray-700 fs-6 mb-1">Queue is empty</div>
-                                <div class="text-gray-500 fs-7">Add one or more plate images to begin.</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div>
+                <h4 class="fw-bold text-gray-900 fs-6 mb-1">Batch Image ANPR Uploader</h4>
+                <div class="text-gray-600 fs-7">Dropzone &amp; ANPR engine execution queue are protected in a dedicated page with password access.</div>
             </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <a href="{{ route('ocr.batch.uploader') }}" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-2 px-4 py-2">
+                <i class="ki-outline ki-lock fs-5"></i>
+                <span class="fw-semibold">Open Batch Uploader</span>
+            </a>
         </div>
     </div>
 </div>
-<!--end::Uploader-->
+<!--end::Uploader Link Banner-->
 
-<!--begin::Inspector Modal-->
-<div class="modal fade" id="recordInspectorModal" tabindex="-1" aria-labelledby="recordInspectorModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable" style="max-width: 95vw;">
-        <div class="modal-content">
-            <div class="modal-header py-5 px-7 flex-wrap gap-4">
-                <div class="d-flex align-items-center gap-3">
-                    <span class="badge badge-light-success fw-semibold fs-8" id="meta-db-id-badge">DB #--</span>
-                    <div>
-                        <h4 class="modal-title fw-bold text-gray-900 fs-5 mb-0" id="recordInspectorModalLabel">Record Inspector</h4>
-                        <div class="text-gray-500 fs-8" id="active-record-subtitle">Select an item from the queue or database log</div>
-                    </div>
-                </div>
-
-                <div class="d-flex align-items-center flex-wrap gap-2 ms-auto" id="modal-choose-logic-bar">
-                    <span class="ocr-label me-1 d-none d-lg-inline">Decision</span>
-                    <button type="button" class="btn btn-sm btn-light-primary" id="modal-btn-accept-current-logic" data-logic="current_logic">Current Logic</button>
-                    <button type="button" class="btn btn-sm btn-light-warning" id="modal-btn-accept-best-pick" data-logic="best_pick">New Logic</button>
-                    <button type="button" class="btn btn-sm btn-light-danger" id="modal-btn-reject-all" data-logic="reject_all">Reject All</button>
-                    <div class="vr mx-1"></div>
-                    <button type="button" class="btn btn-sm btn-light btn-color-danger" id="modal-btn-delete-record">Delete</button>
-                    <a href="#" target="_blank" class="btn btn-sm btn-light d-none" id="open-saved-image-btn">Open image</a>
-                    <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-
-            <div class="modal-body px-7 py-6">
-                <div class="text-center py-15 d-none" id="inspector-placeholder">
-                    <div class="text-gray-800 fw-bold fs-5 mb-2">No record selected</div>
-                    <div class="text-gray-500 fs-7">Click a saved record or queue item to inspect it.</div>
-                </div>
-
-                <div id="inspector-content">
-                    <!--Image + Best summary-->
-                    <div class="row g-5 mb-8">
-                        <div class="col-md-5">
-                            <div class="saved-preview-stage" id="image-frame-wrapper" title="Click to open full image">
-                                <img src="" id="image-preview" alt="Plate image">
-                                <span class="magnifier-hint">Hover to zoom · click to open</span>
-                                <div id="image-magnifier" class="magnifier-glass d-none"></div>
-                            </div>
-                        </div>
-                        <div class="col-md-7">
-                            <div class="best-summary d-flex flex-column justify-content-between" id="best-pick-hero-box">
-                                <div>
-                                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-                                        <span class="ocr-label">New Logic across 4 engines</span>
-                                        <span class="text-gray-600 fs-8" id="best-hero-plate-winner">-</span>
-                                    </div>
-                                    <div class="d-flex align-items-center flex-wrap gap-2 mb-2" id="best-hero-plate-display">
-                                        <span class="text-gray-500 fs-7">Awaiting OCR results...</span>
-                                    </div>
-                                    <div class="fs-7 text-gray-700 mb-3" id="best-hero-region-line">-</div>
-                                    <div class="d-flex flex-wrap gap-2" id="best-hero-char-list"></div>
-                                </div>
-                                <div class="d-flex flex-wrap gap-2 pt-4 mt-4 border-top border-gray-200" id="best-hero-extra-badges"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!--Tabs-->
-                    <ul class="nav nav-line-tabs nav-line-tabs-2x border-gray-200 fs-7 fw-semibold mb-6" id="results-tabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link text-active-primary active" id="table-tab" data-bs-toggle="tab" data-bs-target="#table-panel" type="button" role="tab">Comparison</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link text-active-primary" id="char-breakdown-tab" data-bs-toggle="tab" data-bs-target="#char-breakdown-panel" type="button" role="tab">
-                                Characters <span class="badge badge-light fs-9 ms-1" id="char-total-count-badge">0</span>
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link text-active-primary" id="raw-candid-tab" data-bs-toggle="tab" data-bs-target="#raw-candid-panel" type="button" role="tab">Candid JSON</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link text-active-primary" id="raw-eydea-tab" data-bs-toggle="tab" data-bs-target="#raw-eydea-panel" type="button" role="tab">Eydea JSON</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link text-active-primary" id="raw-parkonic-tab" data-bs-toggle="tab" data-bs-target="#raw-parkonic-panel" type="button" role="tab">ARH JSON</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link text-active-primary" id="raw-anpr2-tab" data-bs-toggle="tab" data-bs-target="#raw-anpr2-panel" type="button" role="tab">Parkonic JSON</button>
-                        </li>
-                    </ul>
-
-                    <div class="tab-content" id="results-tabs-content">
-                        <!--Comparison-->
-                        <div class="tab-pane fade show active" id="table-panel" role="tabpanel">
-                            <div class="alert bg-light-warning border border-warning border-dashed p-4 mb-5 d-none" id="engine-partial-warning" role="alert">
-                                <span id="partial-warning-text" class="text-gray-700 fs-7">One of the requested engines failed. Displaying partial results.</span>
-                            </div>
-
-                            <div class="table-responsive table-responsive-region" tabindex="0" role="region" aria-label="Engine comparison">
-                                <table class="table table-row-dashed table-row-gray-200 gy-3 gx-3 fs-7 mb-0 ocr-table" id="comparison-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Parameter</th>
-                                            <th id="th-candid">Candid</th>
-                                            <th id="th-eydea">Eydea</th>
-                                            <th id="th-parkonic">ARH</th>
-                                            <th id="th-anpr2">Parkonic</th>
-                                            <th id="th-best" class="best-col-cell text-gray-800">New Logic</th>
-                                            <th id="th-currentlogic" class="currentlogic-col-cell text-gray-800">Current Logic</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="text-gray-800">
-                                        <tr>
-                                            <th scope="row" class="text-gray-600 fw-semibold">Detected plate</th>
-                                            <td id="comp-candid-plate">-</td>
-                                            <td id="comp-eydea-plate">-</td>
-                                            <td id="comp-parkonic-plate">-</td>
-                                            <td id="comp-anpr2-plate">-</td>
-                                            <td id="comp-best-plate" class="best-col-cell">-</td>
-                                            <td id="comp-currentlogic-plate" class="currentlogic-col-cell">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row" class="text-gray-600 fw-semibold">Local / Arabic text</th>
-                                            <td id="comp-candid-local">-</td>
-                                            <td id="comp-eydea-local">-</td>
-                                            <td id="comp-parkonic-local">-</td>
-                                            <td id="comp-anpr2-local">-</td>
-                                            <td id="comp-best-local" class="best-col-cell">-</td>
-                                            <td id="comp-currentlogic-local" class="currentlogic-col-cell">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row" class="text-gray-600 fw-semibold">Region / type</th>
-                                            <td id="comp-candid-region">-</td>
-                                            <td id="comp-eydea-region">-</td>
-                                            <td id="comp-parkonic-region">-</td>
-                                            <td id="comp-anpr2-region">-</td>
-                                            <td id="comp-best-region" class="best-col-cell">-</td>
-                                            <td id="comp-currentlogic-region" class="currentlogic-col-cell">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row" class="text-gray-600 fw-semibold">Plate color / size</th>
-                                            <td id="comp-candid-platecolor">-</td>
-                                            <td id="comp-eydea-platecolor">-</td>
-                                            <td id="comp-parkonic-platecolor">-</td>
-                                            <td id="comp-anpr2-platecolor">-</td>
-                                            <td id="comp-best-platecolor" class="best-col-cell">-</td>
-                                            <td id="comp-currentlogic-platecolor" class="currentlogic-col-cell">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row" class="text-gray-600 fw-semibold">OCR confidence</th>
-                                            <td id="comp-candid-conf">-</td>
-                                            <td id="comp-eydea-conf">-</td>
-                                            <td id="comp-parkonic-conf">-</td>
-                                            <td id="comp-anpr2-conf">-</td>
-                                            <td id="comp-best-conf" class="best-col-cell">-</td>
-                                            <td id="comp-currentlogic-conf" class="currentlogic-col-cell">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row" class="text-gray-600 fw-semibold">Characters</th>
-                                            <td id="comp-candid-chars">-</td>
-                                            <td id="comp-eydea-chars">-</td>
-                                            <td id="comp-parkonic-chars">-</td>
-                                            <td id="comp-anpr2-chars">-</td>
-                                            <td id="comp-best-chars" class="best-col-cell">-</td>
-                                            <td id="comp-currentlogic-chars" class="currentlogic-col-cell">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row" class="text-gray-600 fw-semibold">Make</th>
-                                            <td id="comp-candid-make">-</td>
-                                            <td id="comp-eydea-make">-</td>
-                                            <td id="comp-parkonic-make">-</td>
-                                            <td id="comp-anpr2-make">-</td>
-                                            <td id="comp-best-make" class="best-col-cell">-</td>
-                                            <td id="comp-currentlogic-make" class="currentlogic-col-cell">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row" class="text-gray-600 fw-semibold">Model</th>
-                                            <td id="comp-candid-model">-</td>
-                                            <td id="comp-eydea-model">-</td>
-                                            <td id="comp-parkonic-model">-</td>
-                                            <td id="comp-anpr2-model">-</td>
-                                            <td id="comp-best-model" class="best-col-cell">-</td>
-                                            <td id="comp-currentlogic-model" class="currentlogic-col-cell">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row" class="text-gray-600 fw-semibold">Generation / year</th>
-                                            <td id="comp-candid-generation">-</td>
-                                            <td id="comp-eydea-generation">-</td>
-                                            <td id="comp-parkonic-generation">-</td>
-                                            <td id="comp-anpr2-generation">-</td>
-                                            <td id="comp-best-generation" class="best-col-cell">-</td>
-                                            <td id="comp-currentlogic-generation" class="currentlogic-col-cell">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row" class="text-gray-600 fw-semibold">Vehicle (MMR)</th>
-                                            <td id="comp-candid-vehicle">-</td>
-                                            <td id="comp-eydea-vehicle">-</td>
-                                            <td id="comp-parkonic-vehicle">-</td>
-                                            <td id="comp-anpr2-vehicle">-</td>
-                                            <td id="comp-best-vehicle" class="best-col-cell">-</td>
-                                            <td id="comp-currentlogic-vehicle" class="currentlogic-col-cell">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row" class="text-gray-600 fw-semibold">Body type</th>
-                                            <td id="comp-candid-category">-</td>
-                                            <td id="comp-eydea-category">-</td>
-                                            <td id="comp-parkonic-category">-</td>
-                                            <td id="comp-anpr2-category">-</td>
-                                            <td id="comp-best-category" class="best-col-cell">-</td>
-                                            <td id="comp-currentlogic-category" class="currentlogic-col-cell">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row" class="text-gray-600 fw-semibold">Vehicle color</th>
-                                            <td id="comp-candid-color">-</td>
-                                            <td id="comp-eydea-color">-</td>
-                                            <td id="comp-parkonic-color">-</td>
-                                            <td id="comp-anpr2-color">-</td>
-                                            <td id="comp-best-color" class="best-col-cell">-</td>
-                                            <td id="comp-currentlogic-color" class="currentlogic-col-cell">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row" class="text-gray-600 fw-semibold">Viewpoint</th>
-                                            <td id="comp-candid-viewport">-</td>
-                                            <td id="comp-eydea-viewport">-</td>
-                                            <td id="comp-parkonic-viewport">-</td>
-                                            <td id="comp-anpr2-viewport">-</td>
-                                            <td id="comp-best-viewport" class="best-col-cell">-</td>
-                                            <td id="comp-currentlogic-viewport" class="currentlogic-col-cell">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row" class="text-gray-600 fw-semibold">Quality</th>
-                                            <td id="comp-candid-quality">-</td>
-                                            <td id="comp-eydea-quality">-</td>
-                                            <td id="comp-parkonic-quality">-</td>
-                                            <td id="comp-anpr2-quality">-</td>
-                                            <td id="comp-best-quality" class="best-col-cell">-</td>
-                                            <td id="comp-currentlogic-quality" class="currentlogic-col-cell">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row" class="text-gray-600 fw-semibold">Bounding box</th>
-                                            <td id="comp-candid-bbox" class="font-monospace fs-8">-</td>
-                                            <td id="comp-eydea-bbox" class="font-monospace fs-8">-</td>
-                                            <td id="comp-parkonic-bbox" class="font-monospace fs-8">-</td>
-                                            <td id="comp-anpr2-bbox" class="font-monospace fs-8">-</td>
-                                            <td id="comp-best-bbox" class="best-col-cell font-monospace fs-8">-</td>
-                                            <td id="comp-currentlogic-bbox" class="currentlogic-col-cell font-monospace fs-8">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row" class="text-gray-600 fw-semibold">Tags</th>
-                                            <td id="comp-candid-tags">-</td>
-                                            <td id="comp-eydea-tags">-</td>
-                                            <td id="comp-parkonic-tags">-</td>
-                                            <td id="comp-anpr2-tags">-</td>
-                                            <td id="comp-best-tags" class="best-col-cell">-</td>
-                                            <td id="comp-currentlogic-tags" class="currentlogic-col-cell">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row" class="text-gray-600 fw-semibold">Latency</th>
-                                            <td id="comp-candid-time">-</td>
-                                            <td id="comp-eydea-time">-</td>
-                                            <td id="comp-parkonic-time">-</td>
-                                            <td id="comp-anpr2-time">-</td>
-                                            <td id="comp-best-time" class="best-col-cell">-</td>
-                                            <td id="comp-currentlogic-time" class="currentlogic-col-cell">-</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <!--Characters-->
-                        <div class="tab-pane fade" id="char-breakdown-panel" role="tabpanel">
-                            <div class="row g-4 mb-8" id="char-engine-cards-grid"></div>
-
-                            <div class="ocr-label mb-3">Character rows</div>
-                            <div class="table-responsive table-responsive-region" tabindex="0" role="region" aria-label="Character breakdown">
-                                <table class="table table-row-dashed table-row-gray-200 gy-3 gx-3 fs-7 mb-0 ocr-table" id="char-breakdown-table">
-                                    <thead>
-                                        <tr>
-                                            <th style="width: 12%;">Engine</th>
-                                            <th style="width: 10%;">Plate</th>
-                                            <th style="width: 10%;">Position</th>
-                                            <th style="width: 12%;">Character</th>
-                                            <th style="width: 16%;">Confidence</th>
-                                            <th style="width: 40%;">Raw data</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="char-breakdown-tbody" class="text-gray-800">
-                                        <tr>
-                                            <td colspan="6" class="text-center text-gray-500 py-6">Select a record to view characters.</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <!--JSON panels-->
-                        <div class="tab-pane fade" id="raw-candid-panel" role="tabpanel">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="ocr-label">Candid response</span>
-                                <button class="btn btn-sm btn-light" id="copy-candid-json-btn">Copy</button>
-                            </div>
-                            <pre class="ocr-code rounded bg-light p-4 mb-0"><code id="candid-json-code">{}</code></pre>
-                        </div>
-                        <div class="tab-pane fade" id="raw-eydea-panel" role="tabpanel">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="ocr-label">Eydea response</span>
-                                <button class="btn btn-sm btn-light" id="copy-eydea-json-btn">Copy</button>
-                            </div>
-                            <pre class="ocr-code rounded bg-light p-4 mb-0"><code id="eydea-json-code">{}</code></pre>
-                        </div>
-                        <div class="tab-pane fade" id="raw-parkonic-panel" role="tabpanel">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="ocr-label">ARH response</span>
-                                <button class="btn btn-sm btn-light" id="copy-parkonic-json-btn">Copy</button>
-                            </div>
-                            <pre class="ocr-code rounded bg-light p-4 mb-0"><code id="parkonic-json-code">{}</code></pre>
-                        </div>
-                        <div class="tab-pane fade" id="raw-anpr2-panel" role="tabpanel">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="ocr-label">Parkonic response</span>
-                                <button class="btn btn-sm btn-light" id="copy-anpr2-json-btn">Copy</button>
-                            </div>
-                            <pre class="ocr-code rounded bg-light p-4 mb-0"><code id="anpr2-json-code">{}</code></pre>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-<!--end::Inspector Modal-->
+@include('partials.record-inspector-modal')
 
 <!--begin::Database Log-->
 <div class="card card-flush">
@@ -828,6 +454,7 @@
                     <option value="decided">Decided Decisions Only</option>
                     <option value="current_logic">Accepted Current Logic</option>
                     <option value="best_pick">Accepted New Logic</option>
+                    <option value="both_acceptable">Accepted Both</option>
                     <option value="reject_all">Rejected All</option>
                 </select>
             </div>
@@ -924,6 +551,9 @@
         const statBestPickCount = $('stat-best-pick-count');
         const statBestPickPct = $('stat-best-pick-pct');
         const statBestPickSub = $('stat-best-pick-sub');
+        const statBothAcceptableCount = $('stat-both-acceptable-count');
+        const statBothAcceptablePct = $('stat-both-acceptable-pct');
+        const statBothAcceptableSub = $('stat-both-acceptable-sub');
 
         // Queue
         const fileInput = $('batch-file-input');
@@ -971,6 +601,7 @@
 
         const modalBtnAcceptCurrentLogic = $('modal-btn-accept-current-logic');
         const modalBtnAcceptBestPick = $('modal-btn-accept-best-pick');
+        const modalBtnAcceptBoth = $('modal-btn-accept-both');
         const modalBtnRejectAll = $('modal-btn-reject-all');
         const modalBtnDeleteRecord = $('modal-btn-delete-record');
 
@@ -1084,25 +715,29 @@
         imagePreview.addEventListener('mouseleave', () => imageMagnifier.classList.add('d-none'));
 
         // ---------- Dropzone ----------
-        uploadZone.addEventListener('click', () => fileInput.click());
-        ['dragenter', 'dragover'].forEach(n => uploadZone.addEventListener(n, (e) => {
-            e.preventDefault();
-            uploadZone.classList.add('dragover');
-        }));
-        ['dragleave', 'drop'].forEach(n => uploadZone.addEventListener(n, (e) => {
-            e.preventDefault();
-            uploadZone.classList.remove('dragover');
-        }));
-        uploadZone.addEventListener('drop', (e) => {
-            const files = e.dataTransfer.files;
-            if (files && files.length) enqueueFiles(Array.from(files));
-        });
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files && e.target.files.length) {
-                enqueueFiles(Array.from(e.target.files));
-                fileInput.value = '';
-            }
-        });
+        if (uploadZone) {
+            uploadZone.addEventListener('click', () => fileInput && fileInput.click());
+            ['dragenter', 'dragover'].forEach(n => uploadZone.addEventListener(n, (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('dragover');
+            }));
+            ['dragleave', 'drop'].forEach(n => uploadZone.addEventListener(n, (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('dragover');
+            }));
+            uploadZone.addEventListener('drop', (e) => {
+                const files = e.dataTransfer.files;
+                if (files && files.length) enqueueFiles(Array.from(files));
+            });
+        }
+        if (fileInput) {
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files.length) {
+                    enqueueFiles(Array.from(e.target.files));
+                    fileInput.value = '';
+                }
+            });
+        }
 
         function readFileAsDataURL(file) {
             return new Promise((resolve, reject) => {
@@ -1137,40 +772,47 @@
             }
             renderQueueList();
             updateQueueProgress();
-            if (autoProcessToggle.checked) processNextInQueue();
+            if (autoProcessToggle && autoProcessToggle.checked) processNextInQueue();
         }
 
-        startQueueBtn.addEventListener('click', () => processNextInQueue());
+        if (startQueueBtn) {
+            startQueueBtn.addEventListener('click', () => processNextInQueue());
+        }
 
-        clearQueueBtn.addEventListener('click', () => {
-            uploadQueue = isProcessingQueue ? uploadQueue.filter(i => i.status === 'processing') : [];
-            renderQueueList();
-            updateQueueProgress();
-        });
+        if (clearQueueBtn) {
+            clearQueueBtn.addEventListener('click', () => {
+                uploadQueue = isProcessingQueue ? uploadQueue.filter(i => i.status === 'processing') : [];
+                renderQueueList();
+                updateQueueProgress();
+            });
+        }
 
         function updateQueueProgress() {
             const total = uploadQueue.length;
             const completed = uploadQueue.filter(i => i.status === 'done' || i.status === 'error').length;
             const queuedCount = uploadQueue.filter(i => i.status === 'queued').length;
 
-            queueCounterBadge.textContent = `${completed} / ${total}`;
-            statSessionCount.textContent = `${total} ${total === 1 ? 'File' : 'Files'}`;
-            statProcessedCount.textContent = `${completed} / ${total}`;
-            queueProgressBar.style.width = `${total > 0 ? Math.round((completed / total) * 100) : 0}%`;
+            if (queueCounterBadge) queueCounterBadge.textContent = `${completed} / ${total}`;
+            if (statSessionCount) statSessionCount.textContent = `${total} ${total === 1 ? 'File' : 'Files'}`;
+            if (statProcessedCount) statProcessedCount.textContent = `${completed} / ${total}`;
+            if (queueProgressBar) queueProgressBar.style.width = `${total > 0 ? Math.round((completed / total) * 100) : 0}%`;
 
-            startQueueBtn.disabled = isProcessingQueue || queuedCount === 0;
-            clearQueueBtn.disabled = total === 0;
-            startQueueBtnText.textContent = isProcessingQueue ? 'Running...' : `Run (${queuedCount})`;
+            if (startQueueBtn) startQueueBtn.disabled = isProcessingQueue || queuedCount === 0;
+            if (clearQueueBtn) clearQueueBtn.disabled = total === 0;
+            if (startQueueBtnText) startQueueBtnText.textContent = isProcessingQueue ? 'Running...' : `Run (${queuedCount})`;
         }
 
         function renderQueueList() {
+            if (!queueListEl) return;
             queueListEl.innerHTML = '';
             if (uploadQueue.length === 0) {
-                queueListEl.appendChild(queueEmptyState);
-                queueEmptyState.classList.remove('d-none');
+                if (queueEmptyState) {
+                    queueListEl.appendChild(queueEmptyState);
+                    queueEmptyState.classList.remove('d-none');
+                }
                 return;
             }
-            queueEmptyState.classList.add('d-none');
+            if (queueEmptyState) queueEmptyState.classList.add('d-none');
 
             uploadQueue.forEach((item, index) => {
                 const div = document.createElement('div');
@@ -1283,7 +925,7 @@
                 isProcessingQueue = false;
                 renderQueueList();
                 updateQueueProgress();
-                if (uploadQueue.some(i => i.status === 'queued') && autoProcessToggle.checked) {
+                if (uploadQueue.some(i => i.status === 'queued') && autoProcessToggle && autoProcessToggle.checked) {
                     processNextInQueue();
                 }
             }
@@ -2812,12 +2454,14 @@
 
         function updateModalAcceptLogicButtons(acceptedLogic) {
             const set = (btn, base, label, acceptedCls, acceptedLabel, isOn, anyOn) => {
+                if (!btn) return;
                 btn.className = `btn btn-sm ${isOn ? acceptedCls : base}${anyOn && !isOn ? ' opacity-50' : ''}`;
                 btn.textContent = isOn ? acceptedLabel : label;
             };
             const anyOn = !!acceptedLogic && acceptedLogic !== 'none';
             set(modalBtnAcceptCurrentLogic, 'btn-light-primary', 'Current Logic', 'btn-success', 'Current Logic · Accepted', acceptedLogic === 'current_logic', anyOn);
             set(modalBtnAcceptBestPick, 'btn-light-warning', 'New Logic', 'btn-success', 'New Logic · Accepted', acceptedLogic === 'best_pick', anyOn);
+            set(modalBtnAcceptBoth, 'btn-light-info', 'Both Acceptable', 'btn-success', 'Both Acceptable · Accepted', acceptedLogic === 'both_acceptable', anyOn);
             set(modalBtnRejectAll, 'btn-light-danger', 'Reject All', 'btn-danger', 'Rejected', isRejectVal(acceptedLogic), anyOn);
         }
 
@@ -2829,6 +2473,12 @@
             e.preventDefault();
             if (activeInspectedRecordId) window.setAcceptedLogic(activeInspectedRecordId, 'best_pick');
         });
+        if (modalBtnAcceptBoth) {
+            modalBtnAcceptBoth.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (activeInspectedRecordId) window.setAcceptedLogic(activeInspectedRecordId, 'both_acceptable');
+            });
+        }
         modalBtnRejectAll.addEventListener('click', (e) => {
             e.preventDefault();
             if (activeInspectedRecordId) window.setAcceptedLogic(activeInspectedRecordId, 'reject_all');
@@ -2844,8 +2494,9 @@
 
             const currentCount = Number(stats.current_logic_count || 0);
             const bestCount = Number(stats.best_pick_count || 0);
+            const bothCount = Number(stats.both_acceptable_count || 0);
             const fmt = (v) => v !== undefined ? Number(v).toFixed(1) : '0.0';
-            const decided = stats.decided_picks !== undefined ? stats.decided_picks : (currentCount + bestCount);
+            const decided = stats.decided_picks !== undefined ? stats.decided_picks : (currentCount + bestCount + bothCount);
 
             statCurrentLogicCount.textContent = currentCount;
             statCurrentLogicPct.textContent = `${fmt(stats.current_logic_pct)}%`;
@@ -2854,6 +2505,10 @@
             statBestPickCount.textContent = bestCount;
             statBestPickPct.textContent = `${fmt(stats.best_pick_pct)}%`;
             statBestPickSub.textContent = `${bestCount} of ${decided} picks · ${fmt(stats.best_pick_pct_total)}% total`;
+
+            if (statBothAcceptableCount) statBothAcceptableCount.textContent = bothCount;
+            if (statBothAcceptablePct) statBothAcceptablePct.textContent = `${fmt(stats.both_acceptable_pct)}%`;
+            if (statBothAcceptableSub) statBothAcceptableSub.textContent = `${bothCount} of ${decided} picks · ${fmt(stats.both_acceptable_pct_total)}% total`;
         }
 
         function updateComparisonTableAcceptedHeaders(acceptedLogic) {
@@ -2861,8 +2516,13 @@
             const thCurrent = $('th-currentlogic');
             const tag = (txt, tone) => ` <span class="badge badge-light-${tone} fs-9 ms-1">${txt}</span>`;
 
-            thBest.innerHTML = 'New Logic' + (acceptedLogic === 'best_pick' ? tag('Accepted', 'success') : (isRejectVal(acceptedLogic) ? tag('Rejected', 'danger') : ''));
-            thCurrent.innerHTML = 'Current Logic' + (acceptedLogic === 'current_logic' ? tag('Accepted', 'success') : (isRejectVal(acceptedLogic) ? tag('Rejected', 'danger') : ''));
+            if (acceptedLogic === 'both_acceptable') {
+                thBest.innerHTML = 'New Logic' + tag('Accepted (Both)', 'success');
+                thCurrent.innerHTML = 'Current Logic' + tag('Accepted (Both)', 'success');
+            } else {
+                thBest.innerHTML = 'New Logic' + (acceptedLogic === 'best_pick' ? tag('Accepted', 'success') : (isRejectVal(acceptedLogic) ? tag('Rejected', 'danger') : ''));
+                thCurrent.innerHTML = 'Current Logic' + (acceptedLogic === 'current_logic' ? tag('Accepted', 'success') : (isRejectVal(acceptedLogic) ? tag('Rejected', 'danger') : ''));
+            }
         }
 
         window.setAcceptedLogic = async function(recordId, logicKey) {
@@ -3013,22 +2673,25 @@
             const accepted = rec.accepted_logic;
             const isBest = accepted === 'best_pick';
             const isCurrent = accepted === 'current_logic';
+            const isBoth = accepted === 'both_acceptable';
             const isReject = isRejectVal(accepted);
-            const anyOn = isBest || isCurrent || isReject;
+            const anyOn = isBest || isCurrent || isBoth || isReject;
 
             const btn = (on, onCls, offCls, label, action, title) => `
                 <button type="button" class="btn btn-sm py-1 px-3 fs-8 text-start ${on ? onCls : offCls}${anyOn && !on ? ' opacity-50' : ''}"
                     onclick="window.setAcceptedLogic(${rec.id}, '${action}')" title="${title}">${label}</button>`;
 
             let status = '<span class="badge badge-light-warning text-dark fs-9 fw-bold mt-1 px-2 py-1"><i class="ki-outline ki-time fs-9 me-1 text-warning"></i>Decision Pending</span>';
-            if (isBest) status = '<span class="badge badge-light-success text-success fs-9 fw-semibold mt-1 px-2 py-1"><i class="ki-outline ki-check-circle fs-9 me-1"></i>Accepted New Logic</span>';
-            if (isCurrent) status = '<span class="badge badge-light-success text-success fs-9 fw-semibold mt-1 px-2 py-1"><i class="ki-outline ki-check-circle fs-9 me-1"></i>Accepted Current Logic</span>';
-            if (isReject) status = '<span class="badge badge-light-danger text-danger fs-9 fw-semibold mt-1 px-2 py-1"><i class="ki-outline ki-cross-circle fs-9 me-1"></i>Rejected Both</span>';
+            if (isBoth) status = '<span class="badge badge-light-info text-info fs-9 fw-semibold mt-1 px-2 py-1"><i class="ki-outline ki-check-circle fs-9 me-1"></i>Accepted Both</span>';
+            else if (isBest) status = '<span class="badge badge-light-success text-success fs-9 fw-semibold mt-1 px-2 py-1"><i class="ki-outline ki-check-circle fs-9 me-1"></i>Accepted New Logic</span>';
+            else if (isCurrent) status = '<span class="badge badge-light-success text-success fs-9 fw-semibold mt-1 px-2 py-1"><i class="ki-outline ki-check-circle fs-9 me-1"></i>Accepted Current Logic</span>';
+            else if (isReject) status = '<span class="badge badge-light-danger text-danger fs-9 fw-semibold mt-1 px-2 py-1"><i class="ki-outline ki-cross-circle fs-9 me-1"></i>Rejected Both</span>';
 
             return `
                 <div class="d-flex flex-column gap-1" onclick="event.stopPropagation();">
                     ${btn(isCurrent, 'btn-success', 'btn-light-primary', 'Current Logic', 'current_logic', 'Accept Current Logic')}
                     ${btn(isBest, 'btn-success', 'btn-light-warning', 'New Logic', 'best_pick', 'Accept New Logic')}
+                    ${btn(isBoth, 'btn-success', 'btn-light-info', 'Both Acceptable', 'both_acceptable', 'Accept Both Current and New Logic')}
                     ${btn(isReject, 'btn-danger', 'btn-light-danger', isReject ? 'Rejected' : 'Reject All', 'reject_all', 'Neither logic is correct')}
                     <button type="button" class="btn btn-sm btn-light btn-color-gray-600 py-1 px-3 fs-8 text-start" onclick="window.confirmSoftDeleteRecord(${rec.id})">Delete</button>
                     ${status}

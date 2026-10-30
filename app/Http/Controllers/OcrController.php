@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Exception;
 
@@ -32,6 +33,57 @@ class OcrController extends Controller
     {
         $stats = $this->getLogicStats();
         return view('ocr-batch', compact('stats'));
+    }
+
+    /**
+     * Display the Batch ANPR Uploader page or the password challenge screen.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\View\View
+     */
+    public function uploaderIndex(Request $request)
+    {
+        if (!$request->session()->get('ocr_uploader_unlocked')) {
+            return view('ocr-uploader-auth');
+        }
+        return view('ocr-uploader');
+    }
+
+    /**
+     * Authenticate password access to the Batch ANPR Uploader.
+     * Password: Ocr!@#
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function uploaderAuth(Request $request)
+    {
+        $request->validate([
+            'password' => 'required|string',
+        ]);
+
+        $validPassword = env('OCR_UPLOADER_PASSWORD', 'Ocr!@#');
+
+        if ($request->input('password') === $validPassword) {
+            $request->session()->put('ocr_uploader_unlocked', true);
+            return redirect()->route('ocr.batch.uploader');
+        }
+
+        return redirect()->route('ocr.batch.uploader')
+            ->with('error', 'Incorrect password. Access denied.');
+    }
+
+    /**
+     * Lock the Batch ANPR Uploader by clearing the authentication session.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function uploaderLock(Request $request)
+    {
+        $request->session()->forget('ocr_uploader_unlocked');
+        return redirect()->route('ocr.batch.uploader')
+            ->with('info', 'Batch Uploader has been locked.');
     }
 
     /**
@@ -99,10 +151,10 @@ class OcrController extends Controller
 
             $fileSizeBytes = strlen($binaryData);
             $fileHash = hash('sha256', $binaryData);
-            $plateImagesDir = base_path('plateImages');
 
-            if (!File::exists($plateImagesDir)) {
-                File::makeDirectory($plateImagesDir, 0755, true);
+            // Ensure local storage directory exists in storage/app/plateImages
+            if (!Storage::disk('local')->exists('plateImages')) {
+                Storage::disk('local')->makeDirectory('plateImages');
             }
 
             // Query ANPR Engines
@@ -287,8 +339,19 @@ class OcrController extends Controller
             }
             $storedFilename = $sanitizedBase . '_pi_' . $record->id . '.' . $extension;
             $relativePath = 'plateImages/' . $storedFilename;
-            $fullPath = $plateImagesDir . DIRECTORY_SEPARATOR . $storedFilename;
-            File::put($fullPath, $binaryData);
+
+            // Store directly into Laravel local storage (storage/app/plateImages/)
+            Storage::disk('local')->put($relativePath, $binaryData);
+
+            // Optional mirror to legacy root plateImages directory if writable
+            try {
+                $legacyDir = base_path('plateImages');
+                if (File::exists($legacyDir) && is_writable($legacyDir)) {
+                    File::put($legacyDir . DIRECTORY_SEPARATOR . $storedFilename, $binaryData);
+                }
+            } catch (\Throwable $e) {
+                // Silently ignore if root folder is not writable
+            }
 
             $record->update([
                 'stored_filename' => $storedFilename,
@@ -377,6 +440,8 @@ class OcrController extends Controller
                     $query->where('accepted_logic', 'current_logic');
                 } elseif ($status === 'best_pick') {
                     $query->where('accepted_logic', 'best_pick');
+                } elseif ($status === 'both_acceptable') {
+                    $query->where('accepted_logic', 'both_acceptable');
                 } elseif ($status === 'reject_all' || $status === 'rejected') {
                     $query->whereIn('accepted_logic', ['reject_all', 'rejected']);
                 } elseif ($status === 'decided') {
@@ -447,10 +512,10 @@ class OcrController extends Controller
             }
 
             $logic = $request->input('logic', $request->input('accepted_logic', null));
-            if (!in_array($logic, ['current_logic', 'best_pick', 'reject_all', 'rejected', 'none', null], true)) {
+            if (!in_array($logic, ['current_logic', 'best_pick', 'both_acceptable', 'reject_all', 'rejected', 'none', null], true)) {
                 return response()->json([
                     'status' => false,
-                    'error' => 'Invalid logic specified. Must be current_logic, best_pick, reject_all, or none.',
+                    'error' => 'Invalid logic specified. Must be current_logic, best_pick, both_acceptable, reject_all, or none.',
                 ], 422);
             }
 
@@ -526,24 +591,28 @@ class OcrController extends Controller
                 COUNT(*) as total,
                 SUM(CASE WHEN accepted_logic = 'current_logic' THEN 1 ELSE 0 END) as current_logic_count,
                 SUM(CASE WHEN accepted_logic = 'best_pick' THEN 1 ELSE 0 END) as best_pick_count,
+                SUM(CASE WHEN accepted_logic = 'both_acceptable' THEN 1 ELSE 0 END) as both_acceptable_count,
                 SUM(CASE WHEN accepted_logic IN ('reject_all', 'rejected') THEN 1 ELSE 0 END) as reject_all_count,
-                SUM(CASE WHEN accepted_logic IS NULL OR accepted_logic = 'none' THEN 1 ELSE 0 END) as pending_count
+                SUM(CASE WHEN accepted_logic IS NULL OR accepted_logic = 'none' OR accepted_logic = '' THEN 1 ELSE 0 END) as pending_count
             ")->first();
 
             $totalAll = (int) ($logicCounts->total ?? 0);
             $currentCount = (int) ($logicCounts->current_logic_count ?? 0);
             $bestCount = (int) ($logicCounts->best_pick_count ?? 0);
+            $bothCount = (int) ($logicCounts->both_acceptable_count ?? 0);
             $rejectCount = (int) ($logicCounts->reject_all_count ?? 0);
             $pendingCount = (int) ($logicCounts->pending_count ?? 0);
 
-            // Picks comparison: total decided picks between Current Logic and New Logic
-            $decidedPicks = $currentCount + $bestCount;
+            // Picks comparison: total decided picks across Current Logic, New Logic, and Both Acceptable
+            $decidedPicks = $currentCount + $bestCount + $bothCount;
             $allDecided = $decidedPicks + $rejectCount;
 
             $currentPct = $decidedPicks > 0 ? round(($currentCount / $decidedPicks) * 100, 1) : 0.0;
             $bestPct = $decidedPicks > 0 ? round(($bestCount / $decidedPicks) * 100, 1) : 0.0;
+            $bothPct = $decidedPicks > 0 ? round(($bothCount / $decidedPicks) * 100, 1) : 0.0;
             $currentPctTotal = $totalAll > 0 ? round(($currentCount / $totalAll) * 100, 1) : 0.0;
             $bestPctTotal = $totalAll > 0 ? round(($bestCount / $totalAll) * 100, 1) : 0.0;
+            $bothPctTotal = $totalAll > 0 ? round(($bothCount / $totalAll) * 100, 1) : 0.0;
 
             return [
                 'total' => $totalAll,
@@ -553,6 +622,9 @@ class OcrController extends Controller
                 'best_pick_count' => $bestCount,
                 'best_pick_pct' => $bestPct,
                 'best_pick_pct_total' => $bestPctTotal,
+                'both_acceptable_count' => $bothCount,
+                'both_acceptable_pct' => $bothPct,
+                'both_acceptable_pct_total' => $bothPctTotal,
                 'reject_all_count' => $rejectCount,
                 'pending_count' => $pendingCount,
                 'decided_picks' => $decidedPicks,
@@ -568,6 +640,9 @@ class OcrController extends Controller
                 'best_pick_count' => 0,
                 'best_pick_pct' => 0.0,
                 'best_pick_pct_total' => 0.0,
+                'both_acceptable_count' => 0,
+                'both_acceptable_pct' => 0.0,
+                'both_acceptable_pct_total' => 0.0,
                 'reject_all_count' => 0,
                 'pending_count' => 0,
                 'decided_picks' => 0,
@@ -577,7 +652,7 @@ class OcrController extends Controller
     }
 
     /**
-     * Stream a saved image from the root plateImages directory.
+     * Stream a saved image from Laravel local storage (with legacy fallback).
      *
      * @param  string  $filename
      * @return \Symfony\Component\HttpFoundation\BinaryFileResponse
@@ -585,18 +660,31 @@ class OcrController extends Controller
     public function serveImage($filename)
     {
         $safeName = basename($filename);
-        $path = base_path('plateImages' . DIRECTORY_SEPARATOR . $safeName);
 
-        if (!File::exists($path)) {
-            abort(404, 'Plate image not found.');
+        // 1. Check Laravel local storage first (storage/app/plateImages/)
+        $storageRelative = 'plateImages/' . $safeName;
+        if (Storage::disk('local')->exists($storageRelative)) {
+            $path = Storage::disk('local')->path($storageRelative);
+            $mime = File::mimeType($path) ?: 'image/jpeg';
+
+            return response()->file($path, [
+                'Content-Type' => $mime,
+                'Cache-Control' => 'public, max-age=86400',
+            ]);
         }
 
-        $mime = File::mimeType($path) ?: 'image/jpeg';
+        // 2. Fallback to legacy root plateImages/ directory if it exists there
+        $legacyPath = base_path('plateImages' . DIRECTORY_SEPARATOR . $safeName);
+        if (File::exists($legacyPath)) {
+            $mime = File::mimeType($legacyPath) ?: 'image/jpeg';
 
-        return response()->file($path, [
-            'Content-Type' => $mime,
-            'Cache-Control' => 'public, max-age=86400',
-        ]);
+            return response()->file($legacyPath, [
+                'Content-Type' => $mime,
+                'Cache-Control' => 'public, max-age=86400',
+            ]);
+        }
+
+        abort(404, 'Plate image not found.');
     }
 
     /**
