@@ -1198,7 +1198,7 @@
                 div.addEventListener('click', () => {
                     activeItemKey = item.key;
                     renderQueueList();
-                    inspectQueueItem(item);
+                    inspectQueueItem(item, true);
                 });
 
                 queueListEl.appendChild(div);
@@ -1216,10 +1216,14 @@
             isProcessingQueue = true;
             nextItem.status = 'processing';
             nextItem.engine = getSelectedEngine();
-            activeItemKey = nextItem.key;
             renderQueueList();
             updateQueueProgress();
-            inspectQueueItem(nextItem);
+
+            // If the user already opened the inspector modal specifically for this item, update its preview without forcing open
+            const isModalOpen = recordInspectorModalEl && recordInspectorModalEl.classList.contains('show');
+            if (activeItemKey === nextItem.key && isModalOpen) {
+                inspectQueueItem(nextItem, false);
+            }
 
             try {
                 const response = await fetch('{{ route("ocr.batch.process") }}', {
@@ -1245,7 +1249,11 @@
                     nextItem.status = 'done';
                     nextItem.record = data.record;
                     nextItem.results = data.results;
-                    if (activeItemKey === nextItem.key) inspectQueueItem(nextItem);
+                    // If user is currently viewing this item in the modal, update content without forcing open
+                    const modalStillOpen = recordInspectorModalEl && recordInspectorModalEl.classList.contains('show');
+                    if (activeItemKey === nextItem.key && modalStillOpen) {
+                        inspectQueueItem(nextItem, false);
+                    }
                     loadDatabaseRecords(1);
                 }
             } catch (err) {
@@ -1262,12 +1270,13 @@
             }
         }
 
-        function inspectQueueItem(item) {
+        function inspectQueueItem(item, openModal = false) {
+            if (!item) return;
             inspectorPlaceholder.classList.add('d-none');
             inspectorContent.classList.remove('d-none');
 
             if (item.record) {
-                populateInspectorFromRecord(item.record, item.results, true);
+                populateInspectorFromRecord(item.record, item.results, openModal);
                 return;
             }
 
@@ -1290,11 +1299,13 @@
             bestHeroCharList.innerHTML = '';
             bestHeroExtraBadges.innerHTML = '';
 
-            const m = getModal();
-            if (m) m.show();
+            if (openModal) {
+                const m = getModal();
+                if (m) m.show();
+            }
         }
 
-        function populateInspectorFromRecord(record, liveResults = null, openModal = true) {
+        function populateInspectorFromRecord(record, liveResults = null, openModal = false) {
             if (!record) return;
             inspectorPlaceholder.classList.add('d-none');
             inspectorContent.classList.remove('d-none');
