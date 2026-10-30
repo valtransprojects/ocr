@@ -25,7 +25,7 @@ class OcrComparison extends Model
         'file_hash',
         'selected_engine',
 
-        // Best Pick / 4-OCR Consensus
+        // New Logic / 4-OCR Consensus
         'best_plate',
         'best_region',
         'best_confidence',

@@ -161,7 +161,7 @@ class OcrController extends Controller
                 'file_hash' => $fileHash,
                 'selected_engine' => $engine,
 
-                // Best Picks Across 4 OCR Engines
+                // New Logics Across 4 OCR Engines
                 'best_plate' => $bestPicks['best_plate'],
                 'best_region' => $bestPicks['best_region'],
                 'best_confidence' => $bestPicks['best_confidence'],
@@ -536,7 +536,7 @@ class OcrController extends Controller
             $rejectCount = (int) ($logicCounts->reject_all_count ?? 0);
             $pendingCount = (int) ($logicCounts->pending_count ?? 0);
 
-            // Picks comparison: total decided picks between Current Logic and Best Pick
+            // Picks comparison: total decided picks between Current Logic and New Logic
             $decidedPicks = $currentCount + $bestCount;
             $allDecided = $decidedPicks + $rejectCount;
 
@@ -699,7 +699,6 @@ class OcrController extends Controller
                 'message' => 'Candid API returned HTTP status ' . $response->status(),
                 'time_ms' => $elapsed,
             ];
-
         } catch (\Throwable $e) {
             $elapsed = round((microtime(true) - $start) * 1000);
             Log::error('Candid ANPR Engine communication failed: ' . $e->getMessage());
@@ -745,7 +744,6 @@ class OcrController extends Controller
                 'message' => 'Eydea API returned HTTP status ' . $response->status(),
                 'time_ms' => $elapsed,
             ];
-
         } catch (\Throwable $e) {
             $elapsed = round((microtime(true) - $start) * 1000);
             Log::error('Eydea ANPR Engine communication failed: ' . $e->getMessage());
@@ -779,7 +777,7 @@ class OcrController extends Controller
 
             if ($response->successful()) {
                 $data = $response->json();
-                
+
                 // Decode double-serialized JSON if present
                 if (is_string($data)) {
                     $decoded = json_decode($data, true);
@@ -800,7 +798,6 @@ class OcrController extends Controller
                 'message' => 'Parkonic API returned HTTP status ' . $response->status(),
                 'time_ms' => $elapsed,
             ];
-
         } catch (\Throwable $e) {
             $elapsed = round((microtime(true) - $start) * 1000);
             Log::error('Parkonic ANPR Engine communication failed: ' . $e->getMessage());
@@ -834,7 +831,7 @@ class OcrController extends Controller
 
             if ($response->successful()) {
                 $data = $response->json();
-                
+
                 // Decode double-serialized JSON if present
                 if (is_string($data)) {
                     $decoded = json_decode($data, true);
@@ -855,7 +852,6 @@ class OcrController extends Controller
                 'message' => 'ANPR 2 API returned HTTP status ' . $response->status(),
                 'time_ms' => $elapsed,
             ];
-
         } catch (\Throwable $e) {
             $elapsed = round((microtime(true) - $start) * 1000);
             Log::error('ANPR 2 Engine communication failed: ' . $e->getMessage());
@@ -1800,10 +1796,10 @@ class OcrController extends Controller
     }
 
     /**
-     * Composite Best Pick for Plate Attributes (Type, Color, Size, Dimensions).
+     * Composite New Logic for Plate Attributes (Type, Color, Size, Dimensions).
      * Gathers all distinct sub-facets across all 4 engines so unique information
      * (e.g. Type: Taxi (71.276%) from Parkonic, Size: Long from Candid, Dim from Eydea)
-     * is NEVER lost in Best Pick.
+     * is NEVER lost in New Logic.
      */
     private function computeCompositePlateAttributes(array $summaries, array $engineNames): ?array
     {
@@ -1883,19 +1879,27 @@ class OcrController extends Controller
 
         $items = [];
         if (!empty($types)) {
-            usort($types, function ($a, $b) { return $b['score'] <=> $a['score']; });
+            usort($types, function ($a, $b) {
+                return $b['score'] <=> $a['score'];
+            });
             $items[] = $types[0];
         }
         if (!empty($colors)) {
-            usort($colors, function ($a, $b) { return $b['score'] <=> $a['score']; });
+            usort($colors, function ($a, $b) {
+                return $b['score'] <=> $a['score'];
+            });
             $items[] = $colors[0];
         }
         if (!empty($sizes)) {
-            usort($sizes, function ($a, $b) { return $b['score'] <=> $a['score']; });
+            usort($sizes, function ($a, $b) {
+                return $b['score'] <=> $a['score'];
+            });
             $items[] = $sizes[0];
         }
         if (!empty($dims)) {
-            usort($dims, function ($a, $b) { return $b['score'] <=> $a['score']; });
+            usort($dims, function ($a, $b) {
+                return $b['score'] <=> $a['score'];
+            });
             $items[] = $dims[0];
         }
 
@@ -1903,8 +1907,12 @@ class OcrController extends Controller
             return $this->pickBestFieldValue($summaries, 'plate_color', $engineNames);
         }
 
-        $formattedParts = array_map(function ($it) { return $it['formatted']; }, $items);
-        $cleanValues = array_map(function ($it) { return $it['value']; }, $items);
+        $formattedParts = array_map(function ($it) {
+            return $it['formatted'];
+        }, $items);
+        $cleanValues = array_map(function ($it) {
+            return $it['value'];
+        }, $items);
 
         return [
             'value' => implode(' | ', $cleanValues),
@@ -1916,7 +1924,7 @@ class OcrController extends Controller
     }
 
     /**
-     * Composite Best Pick for Quality / Plate Detection.
+     * Composite New Logic for Quality / Plate Detection.
      * Preserves Cropped Image Quality (Parkonic) + Plate Detection / Line OCR (ARH/Eydea).
      */
     private function computeCompositeQuality(array $summaries, array $engineNames): ?array
@@ -1977,8 +1985,12 @@ class OcrController extends Controller
             return $this->pickBestFieldValue($summaries, 'quality', $engineNames);
         }
 
-        $formattedParts = array_map(function ($it) { return $it['formatted']; }, $items);
-        $cleanValues = array_map(function ($it) { return $it['value']; }, $items);
+        $formattedParts = array_map(function ($it) {
+            return $it['formatted'];
+        }, $items);
+        $cleanValues = array_map(function ($it) {
+            return $it['value'];
+        }, $items);
 
         return [
             'value' => implode(' | ', $cleanValues),
@@ -1990,7 +2002,7 @@ class OcrController extends Controller
     }
 
     /**
-     * Composite Best Pick for Bounding Box (Plate BBox + Vehicle BBox from Candid).
+     * Composite New Logic for Bounding Box (Plate BBox + Vehicle BBox from Candid).
      */
     private function computeCompositeBbox(array $summaries, array $engineNames): ?array
     {
@@ -2042,8 +2054,12 @@ class OcrController extends Controller
             return $this->pickBestFieldValue($summaries, 'bbox', $engineNames);
         }
 
-        $formattedParts = array_map(function ($it) { return $it['formatted']; }, $items);
-        $cleanValues = array_map(function ($it) { return $it['value']; }, $items);
+        $formattedParts = array_map(function ($it) {
+            return $it['formatted'];
+        }, $items);
+        $cleanValues = array_map(function ($it) {
+            return $it['value'];
+        }, $items);
 
         return [
             'value' => implode(' | ', $cleanValues),
@@ -2055,7 +2071,7 @@ class OcrController extends Controller
     }
 
     /**
-     * Composite Best Pick for Local / Arabic Text & Code & Groups.
+     * Composite New Logic for Local / Arabic Text & Code & Groups.
      */
     private function computeCompositeLocalText(array $summaries, array $engineNames): ?array
     {
@@ -2128,8 +2144,12 @@ class OcrController extends Controller
             return $this->pickBestFieldValue($summaries, 'local_text', $engineNames);
         }
 
-        $formattedParts = array_map(function ($it) { return $it['formatted']; }, $items);
-        $cleanValues = array_map(function ($it) { return $it['value']; }, $items);
+        $formattedParts = array_map(function ($it) {
+            return $it['formatted'];
+        }, $items);
+        $cleanValues = array_map(function ($it) {
+            return $it['value'];
+        }, $items);
 
         return [
             'value' => implode(' | ', $cleanValues),
@@ -2141,11 +2161,11 @@ class OcrController extends Controller
     }
 
     /**
-     * Compute the Best Picks across all 4 OCR engines (Candid, Eydea, ARH, Parkonic):
+     * Compute the New Logics across all 4 OCR engines (Candid, Eydea, ARH, Parkonic):
      * - Best Region / City (e.g. "Dubai Best 100 from Candid")
-     * - Character-by-character Best Pick (e.g. "4 - 91.666 From ARH", "5 - 97.666 From Eydea")
+     * - Character-by-character New Logic (e.g. "4 - 91.666 From ARH", "5 - 97.666 From Eydea")
      * - Assembled Best Plate (e.g. "DUBAI 45023")
-     * - Best pick for each vehicle/parameter attribute (Orientation, Color, Make, Model, Generation, Category, Plate Color, Local Text, Quality, BBox)
+     * - New Logic for each vehicle/parameter attribute (Orientation, Color, Make, Model, Generation, Category, Plate Color, Local Text, Quality, BBox)
      */
     public function computeBestPicks(array $summaries): array
     {
@@ -2181,7 +2201,7 @@ class OcrController extends Controller
             }
         }
 
-        // 2. Character-by-Character Best Pick Across the 4 Engines (compare primary plate ASCII alphanumeric characters)
+        // 2. Character-by-Character New Logic Across the 4 Engines (compare primary plate ASCII alphanumeric characters)
         $engineCharLists = [];
         $maxCharLen = 0;
         foreach ($summaries as $engKey => $sum) {

@@ -394,8 +394,8 @@
             </div>
             <div class="ocr-stat-sub" id="stat-current-logic-sub">{{ $stats['current_logic_count'] ?? 0 }} of {{ $stats['decided_picks'] ?? 0 }} picks</div>
         </div>
-        <div class="ocr-stat" title="Records where Best Pick was accepted">
-            <div class="ocr-stat-label">Best pick</div>
+        <div class="ocr-stat" title="Records where New Logic was accepted">
+            <div class="ocr-stat-label">New Logic</div>
             <div class="ocr-stat-value">
                 <span id="stat-best-pick-count">{{ $stats['best_pick_count'] ?? 0 }}</span>
                 <span class="fs-7 fw-semibold text-warning ms-1" id="stat-best-pick-pct">{{ $stats['best_pick_pct'] ?? 0 }}%</span>
@@ -501,7 +501,7 @@
                 <div class="d-flex align-items-center flex-wrap gap-2 ms-auto" id="modal-choose-logic-bar">
                     <span class="ocr-label me-1 d-none d-lg-inline">Decision</span>
                     <button type="button" class="btn btn-sm btn-light-primary" id="modal-btn-accept-current-logic" data-logic="current_logic">Current Logic</button>
-                    <button type="button" class="btn btn-sm btn-light-warning" id="modal-btn-accept-best-pick" data-logic="best_pick">Best Pick</button>
+                    <button type="button" class="btn btn-sm btn-light-warning" id="modal-btn-accept-best-pick" data-logic="best_pick">New Logic</button>
                     <button type="button" class="btn btn-sm btn-light-danger" id="modal-btn-reject-all" data-logic="reject_all">Reject All</button>
                     <div class="vr mx-1"></div>
                     <button type="button" class="btn btn-sm btn-light btn-color-danger" id="modal-btn-delete-record">Delete</button>
@@ -530,7 +530,7 @@
                             <div class="best-summary d-flex flex-column justify-content-between" id="best-pick-hero-box">
                                 <div>
                                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-                                        <span class="ocr-label">Best pick across 4 engines</span>
+                                        <span class="ocr-label">New Logic across 4 engines</span>
                                         <span class="text-gray-600 fs-8" id="best-hero-plate-winner">-</span>
                                     </div>
                                     <div class="d-flex align-items-center flex-wrap gap-2 mb-2" id="best-hero-plate-display">
@@ -584,7 +584,7 @@
                                             <th id="th-eydea">Eydea</th>
                                             <th id="th-parkonic">ARH</th>
                                             <th id="th-anpr2">Parkonic</th>
-                                            <th id="th-best" class="best-col-cell text-gray-800">Best Pick</th>
+                                            <th id="th-best" class="best-col-cell text-gray-800">New Logic</th>
                                             <th id="th-currentlogic" class="currentlogic-col-cell text-gray-800">Current Logic</th>
                                         </tr>
                                     </thead>
@@ -818,7 +818,7 @@
                 <i class="ki-outline ki-magnifier fs-3 position-absolute ms-4"></i>
                 <input type="text" id="db-search-input" class="form-control form-control-solid w-250px ps-12" placeholder="Search...">
             </div>
-            <div class="text-gray-500 fs-8 fw-normal ms-6" id="db-total-subtitle">Compare Current Logic and Best Pick, then confirm one or reject both.</div>
+            <div class="text-gray-500 fs-8 fw-normal ms-6" id="db-total-subtitle">Compare Current Logic and New Logic, then confirm one or reject both.</div>
         </div>
         <div class="card-toolbar flex-row-fluid justify-content-end gap-5">
             <div class="w-200 mw-250px">
@@ -827,7 +827,7 @@
                     <option value="pending">Pending Decisions Only</option>
                     <option value="decided">Decided Decisions Only</option>
                     <option value="current_logic">Accepted Current Logic</option>
-                    <option value="best_pick">Accepted Best Pick</option>
+                    <option value="best_pick">Accepted New Logic</option>
                     <option value="reject_all">Rejected All</option>
                 </select>
             </div>
@@ -844,7 +844,7 @@
                         <th>ID</th>
                         <th>Image</th>
                         <th>Decision</th>
-                        <th class="best-col-cell text-gray-800">Best Pick</th>
+                        <th class="best-col-cell text-gray-800">New Logic</th>
                         <th class="currentlogic-col-cell text-gray-800">Current Logic</th>
                         <th>Candid</th>
                         <th>Eydea</th>
@@ -895,6 +895,11 @@
 <script id="ocr-batch-script">
     document.addEventListener('DOMContentLoaded', () => {
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+        // Named Route templates with placeholders for dynamic IDs
+        const acceptLogicRouteTemplate = "{{ route('ocr.batch.acceptLogic', ['id' => ':id']) }}";
+        const deleteRecordRouteTemplate = "{{ route('ocr.batch.deleteRecord', ['id' => ':id']) }}";
+        const imageRouteTemplate = "{{ route('ocr.image', ['filename' => ':filename']) }}";
 
         // State
         const currentBatchId = 'batch_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
@@ -1330,7 +1335,7 @@
                 tr.classList.toggle('active-db-row', Number(tr.dataset.recordId) === Number(record.id));
             });
 
-            const imageUrl = record.image_url || `/plateImages/${encodeURIComponent(record.stored_filename)}`;
+            const imageUrl = record.image_url || (record.stored_filename ? imageRouteTemplate.replace(':filename', encodeURIComponent(record.stored_filename)) : '');
             imagePreview.src = imageUrl;
             openSavedImageBtn.href = imageUrl;
             openSavedImageBtn.classList.remove('d-none');
@@ -1464,7 +1469,7 @@
             label: 'Parkonic'
         }];
 
-        // ---------- Best pick ----------
+        // ---------- New Logic ----------
         function getOrComputeBestSummary(rec) {
             if (rec && rec.best_summary_json && rec.best_summary_json.plate) {
                 if (!Array.isArray(rec.best_summary_json.characters) || rec.best_summary_json.characters.length === 0) {
@@ -2211,7 +2216,7 @@
 
             const engineConfigs = [{
                     key: 'best',
-                    title: 'Best Pick',
+                    title: 'New Logic',
                     plate: best ? (best.final_plate || (best.plate ? best.plate.value : 'No plate')) : 'No plate',
                     list: best && Array.isArray(best.characters) ? best.characters : []
                 },
@@ -2301,7 +2306,7 @@
                 eydea: 'Eydea',
                 arh: 'ARH',
                 parkonic: 'Parkonic',
-                best: 'Best Pick',
+                best: 'New Logic',
                 current_logic: 'Current Logic'
             };
 
@@ -2798,7 +2803,8 @@
 
         imageFrameWrapper.addEventListener('click', () => {
             if (!activeInspectedRecord) return;
-            window.open(activeInspectedRecord.image_url || `/plateImages/${encodeURIComponent(activeInspectedRecord.stored_filename)}`, '_blank');
+            const imgUrl = activeInspectedRecord.image_url || (activeInspectedRecord.stored_filename ? imageRouteTemplate.replace(':filename', encodeURIComponent(activeInspectedRecord.stored_filename)) : '');
+            if (imgUrl) window.open(imgUrl, '_blank');
         });
 
         // ---------- Decisions ----------
@@ -2811,7 +2817,7 @@
             };
             const anyOn = !!acceptedLogic && acceptedLogic !== 'none';
             set(modalBtnAcceptCurrentLogic, 'btn-light-primary', 'Current Logic', 'btn-success', 'Current Logic · Accepted', acceptedLogic === 'current_logic', anyOn);
-            set(modalBtnAcceptBestPick, 'btn-light-warning', 'Best Pick', 'btn-success', 'Best Pick · Accepted', acceptedLogic === 'best_pick', anyOn);
+            set(modalBtnAcceptBestPick, 'btn-light-warning', 'New Logic', 'btn-success', 'New Logic · Accepted', acceptedLogic === 'best_pick', anyOn);
             set(modalBtnRejectAll, 'btn-light-danger', 'Reject All', 'btn-danger', 'Rejected', isRejectVal(acceptedLogic), anyOn);
         }
 
@@ -2855,7 +2861,7 @@
             const thCurrent = $('th-currentlogic');
             const tag = (txt, tone) => ` <span class="badge badge-light-${tone} fs-9 ms-1">${txt}</span>`;
 
-            thBest.innerHTML = 'Best Pick' + (acceptedLogic === 'best_pick' ? tag('Accepted', 'success') : (isRejectVal(acceptedLogic) ? tag('Rejected', 'danger') : ''));
+            thBest.innerHTML = 'New Logic' + (acceptedLogic === 'best_pick' ? tag('Accepted', 'success') : (isRejectVal(acceptedLogic) ? tag('Rejected', 'danger') : ''));
             thCurrent.innerHTML = 'Current Logic' + (acceptedLogic === 'current_logic' ? tag('Accepted', 'success') : (isRejectVal(acceptedLogic) ? tag('Rejected', 'danger') : ''));
         }
 
@@ -2883,7 +2889,8 @@
             applyUi(nextAccepted);
 
             try {
-                const response = await fetch(`/ocr/batch/record/${recordId}/accept-logic`, {
+                const targetUrl = acceptLogicRouteTemplate.replace(':id', encodeURIComponent(recordId));
+                const response = await fetch(targetUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -2913,7 +2920,8 @@
 
             const executeDelete = async () => {
                 try {
-                    const response = await fetch(`/ocr/batch/record/${recordId}/delete`, {
+                    const targetUrl = deleteRecordRouteTemplate.replace(':id', encodeURIComponent(recordId));
+                    const response = await fetch(targetUrl, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -3013,14 +3021,14 @@
                     onclick="window.setAcceptedLogic(${rec.id}, '${action}')" title="${title}">${label}</button>`;
 
             let status = '<span class="badge badge-light-warning text-dark fs-9 fw-bold mt-1 px-2 py-1"><i class="ki-outline ki-time fs-9 me-1 text-warning"></i>Decision Pending</span>';
-            if (isBest) status = '<span class="badge badge-light-success text-success fs-9 fw-semibold mt-1 px-2 py-1"><i class="ki-outline ki-check-circle fs-9 me-1"></i>Accepted Best Pick</span>';
+            if (isBest) status = '<span class="badge badge-light-success text-success fs-9 fw-semibold mt-1 px-2 py-1"><i class="ki-outline ki-check-circle fs-9 me-1"></i>Accepted New Logic</span>';
             if (isCurrent) status = '<span class="badge badge-light-success text-success fs-9 fw-semibold mt-1 px-2 py-1"><i class="ki-outline ki-check-circle fs-9 me-1"></i>Accepted Current Logic</span>';
             if (isReject) status = '<span class="badge badge-light-danger text-danger fs-9 fw-semibold mt-1 px-2 py-1"><i class="ki-outline ki-cross-circle fs-9 me-1"></i>Rejected Both</span>';
 
             return `
                 <div class="d-flex flex-column gap-1" onclick="event.stopPropagation();">
                     ${btn(isCurrent, 'btn-success', 'btn-light-primary', 'Current Logic', 'current_logic', 'Accept Current Logic')}
-                    ${btn(isBest, 'btn-success', 'btn-light-warning', 'Best Pick', 'best_pick', 'Accept Best Pick')}
+                    ${btn(isBest, 'btn-success', 'btn-light-warning', 'New Logic', 'best_pick', 'Accept New Logic')}
                     ${btn(isReject, 'btn-danger', 'btn-light-danger', isReject ? 'Rejected' : 'Reject All', 'reject_all', 'Neither logic is correct')}
                     <button type="button" class="btn btn-sm btn-light btn-color-gray-600 py-1 px-3 fs-8 text-start" onclick="window.confirmSoftDeleteRecord(${rec.id})">Delete</button>
                     ${status}

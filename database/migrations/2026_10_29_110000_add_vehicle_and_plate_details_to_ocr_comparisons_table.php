@@ -14,7 +14,7 @@ class AddVehicleAndPlateDetailsToOcrComparisonsTable extends Migration
     public function up()
     {
         Schema::table('ocr_comparisons', function (Blueprint $table) {
-            // Additional Best Pick columns across the 4 OCR engines
+            // Additional New Logic columns across the 4 OCR engines
             $table->text('best_make')->nullable()->after('best_characters_json');
             $table->text('best_model')->nullable()->after('best_make');
             $table->text('best_generation')->nullable()->after('best_model');
@@ -113,4 +113,3 @@ class AddVehicleAndPlateDetailsToOcrComparisonsTable extends Migration
         });
     }
 }
-
