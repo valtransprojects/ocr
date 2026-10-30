@@ -362,7 +362,28 @@ class OcrController extends Controller
     public function batchRecords(Request $request)
     {
         try {
-            $query = OcrComparison::with('characters')->orderByDesc('id');
+            $query = OcrComparison::with('characters')
+                ->orderByRaw("CASE WHEN accepted_logic IS NULL OR accepted_logic = '' OR accepted_logic = 'none' THEN 0 ELSE 1 END ASC")
+                ->orderByDesc('id');
+
+            if ($status = trim((string) $request->query('status', $request->query('filter', '')))) {
+                if ($status === 'pending') {
+                    $query->where(function ($q) {
+                        $q->whereNull('accepted_logic')
+                            ->orWhere('accepted_logic', 'none')
+                            ->orWhere('accepted_logic', '');
+                    });
+                } elseif ($status === 'current_logic') {
+                    $query->where('accepted_logic', 'current_logic');
+                } elseif ($status === 'best_pick') {
+                    $query->where('accepted_logic', 'best_pick');
+                } elseif ($status === 'reject_all' || $status === 'rejected') {
+                    $query->whereIn('accepted_logic', ['reject_all', 'rejected']);
+                } elseif ($status === 'decided') {
+                    $query->whereNotNull('accepted_logic')
+                        ->whereNotIn('accepted_logic', ['none', '']);
+                }
+            }
 
             if ($search = trim((string) $request->query('search', ''))) {
                 $query->where(function ($q) use ($search) {

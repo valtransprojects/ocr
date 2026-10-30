@@ -813,13 +813,26 @@
 <!--begin::Database Log-->
 <div class="card card-flush">
     <div class="card-header pt-6 flex-wrap gap-3">
-        <div class="card-title flex-column align-items-start">
-            <h3 class="fw-bold text-gray-900 fs-5 mb-1">Database Log</h3>
-            <div class="text-gray-500 fs-8 fw-normal" id="db-total-subtitle">Compare Current Logic and Best Pick, then confirm one or reject both.</div>
+        <div class="card-title">
+            <div class="d-flex align-items-center position-relative my-1">
+                <i class="ki-outline ki-magnifier fs-3 position-absolute ms-4"></i>
+                <input type="text" id="db-search-input" class="form-control form-control-solid w-250px ps-12" placeholder="Search...">
+            </div>
+            <div class="text-gray-500 fs-8 fw-normal ms-6" id="db-total-subtitle">Compare Current Logic and Best Pick, then confirm one or reject both.</div>
         </div>
-        <div class="card-toolbar gap-2">
-            <input type="text" id="db-search-input" class="form-control form-control-sm form-control-solid w-250px" placeholder="Search plate, filename, batch">
-            <button class="btn btn-sm btn-light" id="refresh-db-btn">Refresh</button>
+        <div class="card-toolbar flex-row-fluid justify-content-end gap-5">
+            <div class="w-200 mw-250px">
+                <select id="db-decision-filter" class="form-select form-select-solid w-180px" title="Filter database log by decision status">
+                    <option value="all" selected>All (Pending First)</option>
+                    <option value="pending">Pending Decisions Only</option>
+                    <option value="decided">Decided Decisions Only</option>
+                    <option value="current_logic">Accepted Current Logic</option>
+                    <option value="best_pick">Accepted Best Pick</option>
+                    <option value="reject_all">Rejected All</option>
+                </select>
+            </div>
+
+            <button class="btn btn-light-info" id="refresh-db-btn">Refresh</button>
         </div>
     </div>
 
@@ -991,6 +1004,7 @@
         const anpr2JsonCode = $('anpr2-json-code');
 
         // DB table
+        const dbDecisionFilter = $('db-decision-filter');
         const dbSearchInput = $('db-search-input');
         const refreshDbBtn = $('refresh-db-btn');
         const dbHistoryTbody = $('db-history-tbody');
@@ -2998,10 +3012,10 @@
                 <button type="button" class="btn btn-sm py-1 px-3 fs-8 text-start ${on ? onCls : offCls}${anyOn && !on ? ' opacity-50' : ''}"
                     onclick="window.setAcceptedLogic(${rec.id}, '${action}')" title="${title}">${label}</button>`;
 
-            let status = '<span class="text-gray-400 fs-9 mt-1">Pending</span>';
-            if (isBest) status = '<span class="text-success fs-9 fw-semibold mt-1">Accepted best pick</span>';
-            if (isCurrent) status = '<span class="text-success fs-9 fw-semibold mt-1">Accepted current logic</span>';
-            if (isReject) status = '<span class="text-danger fs-9 fw-semibold mt-1">Rejected both</span>';
+            let status = '<span class="badge badge-light-warning text-dark fs-9 fw-bold mt-1 px-2 py-1"><i class="ki-outline ki-time fs-9 me-1 text-warning"></i>Decision Pending</span>';
+            if (isBest) status = '<span class="badge badge-light-success text-success fs-9 fw-semibold mt-1 px-2 py-1"><i class="ki-outline ki-check-circle fs-9 me-1"></i>Accepted Best Pick</span>';
+            if (isCurrent) status = '<span class="badge badge-light-success text-success fs-9 fw-semibold mt-1 px-2 py-1"><i class="ki-outline ki-check-circle fs-9 me-1"></i>Accepted Current Logic</span>';
+            if (isReject) status = '<span class="badge badge-light-danger text-danger fs-9 fw-semibold mt-1 px-2 py-1"><i class="ki-outline ki-cross-circle fs-9 me-1"></i>Rejected Both</span>';
 
             return `
                 <div class="d-flex flex-column gap-1" onclick="event.stopPropagation();">
@@ -3172,11 +3186,15 @@
         // ---------- Load DB ----------
         async function loadDatabaseRecords(page = 1) {
             const search = dbSearchInput.value.trim();
+            const decisionFilter = dbDecisionFilter ? dbDecisionFilter.value : 'all';
             try {
                 const url = new URL('{{ route("ocr.batch.records") }}', window.location.origin);
                 url.searchParams.set('page', page);
                 url.searchParams.set('per_page', 15);
                 if (search) url.searchParams.set('search', search);
+                if (decisionFilter && decisionFilter !== 'all') {
+                    url.searchParams.set('status', decisionFilter);
+                }
 
                 const res = await fetch(url.toString(), {
                     headers: {
@@ -3196,13 +3214,14 @@
 
                 statDbTotal.textContent = data.pagination.total;
                 if (data.stats) updateLogicKpiStats(data.stats);
-                dbTotalSubtitle.textContent = `Showing ${dbRecordsCache.length} of ${data.pagination.total} records`;
+                const filterLabel = (decisionFilter && decisionFilter !== 'all') ? ` [Filter: ${decisionFilter}]` : ' · Decision Pending shown first';
+                dbTotalSubtitle.innerHTML = `Showing <strong>${dbRecordsCache.length}</strong> of <strong>${data.pagination.total}</strong> records<span class="text-gray-500">${filterLabel}</span>`;
                 dbPageInfo.textContent = `Page ${currentDbPage} of ${lastDbPage}`;
                 dbPrevPageBtn.disabled = currentDbPage <= 1;
                 dbNextPageBtn.disabled = currentDbPage >= lastDbPage;
 
                 if (dbRecordsCache.length === 0) {
-                    dbHistoryTbody.innerHTML = `<tr><td colspan="9" class="text-center text-gray-500 py-10">No records yet. Upload images above to get started.</td></tr>`;
+                    dbHistoryTbody.innerHTML = `<tr><td colspan="9" class="text-center text-gray-500 py-10">No records found matching current criteria.</td></tr>`;
                     return;
                 }
 
@@ -3249,6 +3268,9 @@
         }
 
         let searchDebounce = null;
+        if (dbDecisionFilter) {
+            dbDecisionFilter.addEventListener('change', () => loadDatabaseRecords(1));
+        }
         dbSearchInput.addEventListener('input', () => {
             clearTimeout(searchDebounce);
             searchDebounce = setTimeout(() => loadDatabaseRecords(1), 300);
